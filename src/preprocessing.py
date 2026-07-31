@@ -1,6 +1,12 @@
 """댓글 텍스트 전처리 단계별 함수 모음."""
 
+import os
 import re
+
+# konlpy(Okt)가 JVM을 못 찾는 환경(JAVA_HOME 갱신 전에 켜진 커널 등)을 위한 안전장치
+os.environ.setdefault(
+    "JAVA_HOME", r"C:\Program Files\Eclipse Adoptium\jdk-17.0.20.8-hotspot"
+)
 
 from konlpy.tag import Okt
 
@@ -60,15 +66,51 @@ def clean_text(text: str) -> str:
     return text
 
 
-def extract_nouns(text: str) -> str:
-    """2단계 전처리: 조사/동사/형용사 등을 버리고 명사만 남김 (원형 복원 없음).
+_DROP_TAGS = {"Verb", "Adjective", "Punctuation", "KoreanParticle"}
 
-    같은 명사가 한 댓글 안에 여러 번 나오면 처음 등장한 순서만 남기고 중복 제거.
+# 흔히 쓰이는 조사만 모음 (긴 것부터 검사해야 "에서"가 "에"로 잘못 잘리는 일이 없음)
+_JOSA_SUFFIXES = sorted(
+    [
+        "에서", "으로", "한테", "에게", "부터", "까지", "이랑", "이나", "이라",
+        "은", "는", "이", "가", "을", "를", "에", "로", "와", "과", "도", "만", "의", "랑", "나", "께",
+    ],
+    key=len,
+    reverse=True,
+)
+
+
+def _recover_from_josa(word: str) -> str:
+    """Okt가 명사 일부까지 통째로 Josa로 잘못 태깅한 경우(예: '건국대로' -> '건국'+'대로')
+    조사 부분만 떼어내고 남은 앞부분을 복구. 순수 조사(은/는/이/가 등)면 빈 문자열 반환."""
+    for josa in _JOSA_SUFFIXES:
+        if len(word) > len(josa) and word.endswith(josa):
+            return word[: -len(josa)]
+    return ""
+
+
+def extract_nouns(text: str) -> str:
+    """2단계 전처리: 명사만 뽑는 게 아니라 조사/동사/형용사만 지움 (원형 복원 없음).
+
+    - 어절(공백 기준 단어) 단위로 분석해서, 조사/동사/형용사가 아닌 나머지 토큰만
+      공백 없이 그대로 이어붙임. "대치"+"중"(Suffix)이나 "서초"+"초"(Noun) 처럼
+      Okt가 학교명 축약어를 여러 조각으로 쪼개도, 조사/동사가 아니면 지우지 않으니
+      원문 그대로 "대치중"/"서초초"가 유지됨.
+    - Josa 태그 토큰은 무조건 버리는 게 아니라 `_recover_from_josa`로 한 번 더 확인해서,
+      "대로"처럼 명사 일부가 조사에 붙어 같이 태깅된 경우 그 앞부분("대")을 복구.
+    - 같은 단어가 한 댓글 안에 여러 번 나오면 처음 등장한 순서만 남기고 중복 제거.
     """
-    tokens = _okt.pos(text)
-    nouns = [word for word, tag in tokens if tag == "Noun"]
-    unique_nouns = list(dict.fromkeys(nouns))
-    return " ".join(unique_nouns)
+    words = []
+    for eojeol in text.split():
+        buf = ""
+        for word, tag in _okt.pos(eojeol):
+            if tag == "Josa":
+                buf += _recover_from_josa(word)
+            elif tag not in _DROP_TAGS:
+                buf += word
+        if buf:
+            words.append(buf)
+    unique_words = list(dict.fromkeys(words))
+    return " ".join(unique_words)
 
 
 def preprocess(text: str) -> str:
@@ -76,9 +118,38 @@ def preprocess(text: str) -> str:
     return extract_nouns(clean_text(text))
 
 
-_SCHOOL_SUFFIX = re.compile(r"(초|중|고|대|학교)$")
+_SCHOOL_SUFFIXES = ("학교", "초", "중", "고", "대")
+
+
+def extract_school_candidates(noun_text: str) -> str:
+    """초/중/고/대/학교로 끝나는 토큰만 뽑아 공백으로 이어붙임 (해당 댓글의 학교명 후보/대표값).
+
+    comment_noun(extract_nouns까지 끝낸 결과) 기준으로 검사. extract_nouns 단계에서
+    이미 조사 복구(_recover_from_josa)를 거쳤기 때문에 "건국대로" 같은 경우도
+    comment_noun에는 "건국대"로 남아있어서 정상적으로 잡힘.
+    """
+    return " ".join(token for token in noun_text.split() if token.endswith(_SCHOOL_SUFFIXES))
 
 
 def noun_count(noun_text: str) -> int:
-    """명사 중 초/중/고/대/학교로 끝나는 토큰 개수 (학교명 후보 개수 가설 검증용)."""
-    return sum(1 for token in noun_text.split() if _SCHOOL_SUFFIX.search(token))
+    """학교명 후보 개수 (댓글당 학교 1개 가설 검증용)."""
+    return len(extract_school_candidates(noun_text).split())
+
+
+_SUFFIX_EXPAND = {"초": "등학교", "중": "학교", "고": "등학교", "대": "학교"}
+
+
+def expand_school_suffix(candidate: str) -> list[str]:
+    """축약된 학교명 후보를 정식 명칭 형태(들)로 확장 (GT 대조용, 우선순위 순서로 반환).
+
+    - 이미 "학교"로 끝나면 그대로 하나만 반환
+    - "초"/"고"는 "등학교", "중"은 "학교"를 붙임
+    - "대"는 "학교"(대학교)를 우선 시도하고, 매칭 실패 시를 대비해 "학"(전문대/기능대,
+      예: "폴리텍대"->"폴리텍대학")도 후보로 같이 반환
+    """
+    if candidate.endswith("학교"):
+        return [candidate]
+    last = candidate[-1]
+    if last == "대":
+        return [candidate + "학교", candidate + "학"]
+    return [candidate + _SUFFIX_EXPAND.get(last, "")]
