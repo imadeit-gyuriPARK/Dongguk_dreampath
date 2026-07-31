@@ -30,8 +30,8 @@ _EMOJI_PATTERN = re.compile(
 # ㅋㅋㅋ, ㅎㅎ, ㅠㅠ, ㅜㅜ 처럼 완성되지 않은 자음/모음만 연속되는 구간
 _JAMO_PATTERN = re.compile(r"[ㄱ-ㅎㅏ-ㅣ]+")
 
-# 마침표, 느낌표, 물음표, 물결, 말줄임표, 슬래시 등 문장부호 (반복 포함: .. !! 등)
-_PUNCT_PATTERN = re.compile(r"[.,!?~…/]+")
+# 마침표, 느낌표, 물음표, 물결, 말줄임표, 슬래시, 해시태그(#) 등 문장부호 (반복 포함: .. !! 등)
+_PUNCT_PATTERN = re.compile(r"[.,!?~…/#]+")
 
 
 def remove_emoji(text: str) -> str:
