@@ -136,6 +136,45 @@ def noun_count(noun_text: str) -> int:
     return len(extract_school_candidates(noun_text).split())
 
 
+def extract_school_candidates_fallback(clean_text_1: str) -> str:
+    """school_candidate_count == 0인 행을 위한 폴백.
+
+    comment_noun(Okt 결과)이 아니라 comment_clean_1(1단계, Okt 타기 전 원문)에서
+    어절 단위로 직접 문자열 매칭해서 초/중/고/대/학교로 끝나는 가장 짧은 부분 문자열을 찾음.
+    Okt가 접미사를 조사/다른 명사에 흡수시켜버려 comment_noun에서 놓친 후보를 복구하는 용도.
+    조사 축약형이나 오검출이 섞여 나올 수 있지만, 그건 이후 단계에서 별도로 걸러짐.
+    """
+    candidates = []
+    for eojeol in clean_text_1.split():
+        for i in range(2, len(eojeol) + 1):
+            prefix = eojeol[:i]
+            if prefix.endswith(_SCHOOL_SUFFIXES):
+                candidates.append(prefix)
+                break
+    unique_candidates = list(dict.fromkeys(candidates))
+    return " ".join(unique_candidates)
+
+
+def merge_spaced_syllables(text: str) -> str:
+    """'서 강 대'처럼 한 글자씩 띄어 쓴 경우, 연속된 한 글자 토큰들을 하나로 합침
+    (예: '서 강 대 치킨' -> '서강대 치킨'). count.ipynb에서 count==0 폴백으로도
+    못 잡힌 행들을 위한 추가 폴백 전처리 — clean_text 기본 파이프라인에는 포함 안 함."""
+    tokens = text.split(" ")
+    merged = []
+    buf = ""
+    for tok in tokens:
+        if len(tok) == 1 and "가" <= tok <= "힣":
+            buf += tok
+        else:
+            if buf:
+                merged.append(buf)
+                buf = ""
+            merged.append(tok)
+    if buf:
+        merged.append(buf)
+    return " ".join(merged)
+
+
 _SUFFIX_EXPAND = {"초": "등학교", "중": "학교", "고": "등학교", "대": "학교"}
 
 
