@@ -155,6 +155,26 @@ def extract_school_candidates_fallback(clean_text_1: str) -> str:
     return " ".join(unique_candidates)
 
 
+def extract_school_candidates_longest(clean_text_1: str) -> str:
+    """extract_school_candidates_fallback의 가장 긴 접미사 매칭 버전.
+
+    기존 함수는 어절 안에서 초/중/고/대/학교로 끝나는 가장 "짧은" 부분 문자열을 찾다 보니,
+    "서초중"처럼 짧은 유효 접미사("서초")가 먼저 걸려서 뒤에 이어지는 "중"을 놓치는 경우가 있음
+    (merge_spaced_syllables로 붙여쓴 긴 학교명을 복구할 때 특히 문제가 됨: "이대부초"->"이대"처럼).
+    그래서 어절 길이부터 거꾸로 줄여가며 가장 "긴" 부분 문자열을 우선 채택.
+    기존 extract_school_candidates_fallback을 쓰는 3.0의 원래 파이프라인에는 영향 없도록
+    별도 함수로 분리함."""
+    candidates = []
+    for eojeol in clean_text_1.split():
+        for i in range(len(eojeol), 1, -1):
+            prefix = eojeol[:i]
+            if prefix.endswith(_SCHOOL_SUFFIXES):
+                candidates.append(prefix)
+                break
+    unique_candidates = list(dict.fromkeys(candidates))
+    return " ".join(unique_candidates)
+
+
 def merge_spaced_syllables(text: str) -> str:
     """'서 강 대'처럼 한 글자씩 띄어 쓴 경우, 연속된 한 글자 토큰들을 하나로 합침
     (예: '서 강 대 치킨' -> '서강대 치킨'). count.ipynb에서 count==0 폴백으로도
