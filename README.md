@@ -1,7 +1,7 @@
 
 ## 1. 과제 내용
 
-![과제 내용](./img/image.png)
+![과제 내용](./img/whattodo.png)
 
 ## 2. 파이프라인
 
