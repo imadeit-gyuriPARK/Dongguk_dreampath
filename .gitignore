@@ -4,4 +4,6 @@ __pycache__/
 .venv/
 venv/
 .DS_Store
+.txt
 debug/
+
