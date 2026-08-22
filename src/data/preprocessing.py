@@ -88,7 +88,7 @@ def _recover_from_josa(word: str) -> str:
     return ""
 
 
-def extract_nouns(text: str) -> str:
+def clean_pos(text: str) -> str:
     """2단계 전처리: 명사만 뽑는 게 아니라 조사/동사/형용사만 지움 (원형 복원 없음).
 
     - 어절(공백 기준 단어) 단위로 분석해서, 조사/동사/형용사가 아닌 나머지 토큰만
@@ -114,8 +114,8 @@ def extract_nouns(text: str) -> str:
 
 
 def preprocess(text: str) -> str:
-    """전체 파이프라인: 이모지/ㅋㅋㅎㅎ/문장부호 제거 → 조사/동사 제거(명사만 추출)."""
-    return extract_nouns(clean_text(text))
+    """전체 파이프라인: 이모지/ㅋㅋㅎㅎ/문장부호 제거 → 조사/동사 제거."""
+    return clean_pos(clean_text(text))
 
 
 _SCHOOL_SUFFIXES = ("학교", "초", "중", "고", "대")
@@ -124,7 +124,7 @@ _SCHOOL_SUFFIXES = ("학교", "초", "중", "고", "대")
 def extract_school_candidates(noun_text: str) -> str:
     """초/중/고/대/학교로 끝나는 토큰만 뽑아 공백으로 이어붙임 (해당 댓글의 학교명 후보/대표값).
 
-    comment_noun(extract_nouns까지 끝낸 결과) 기준으로 검사. extract_nouns 단계에서
+    comment_noun(clean_pos까지 끝낸 결과) 기준으로 검사. clean_pos 단계에서
     이미 조사 복구(_recover_from_josa)를 거쳤기 때문에 "건국대로" 같은 경우도
     comment_noun에는 "건국대"로 남아있어서 정상적으로 잡힘.
     """

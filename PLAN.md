@@ -26,10 +26,14 @@ Microsoft · Cloud & AI Solution 엔지니어 현직자가 리뷰 예정.
 ```
 dreampath/
 ├── data/
-│   ├── raw/          # 원본 댓글 데이터셋
-│   └── processed/    # 정제/집계된 결과 (school_counts.csv 등)
-├── src/              # 분석 스크립트
-├── outputs/
+│   ├── raw/          # 원본 댓글/사전 데이터셋
+│   ├── interim/      # 파이프라인 중간 산출물
+│   └── processed/    # 학습/분석에 바로 쓰는 최종본 (GT 사전 등)
+├── notebooks/        # EDA, 파이프라인 단계별 노트북 ({단계번호}-{설명}.ipynb)
+├── src/
+│   └── data/         # 재사용 전처리 코드 (preprocessing.py)
+├── results/          # 실험 결과 (날짜별 폴더)
+├── reports/
 │   └── figures/      # 시각화 결과
 ├── .gitignore
 ├── requirements.txt
