@@ -140,3 +140,7 @@ preprocessed_candidate, school_candidate_count, gt_match, gt_match_count, ans, a
 - 진짜 미매칭 16건은 여전히 `ans`가 빈 값 (학교명이 아예 없거나 GT에 없는 신규/오탈자 케이스)
 - `초등학교`라는 특정 학교를 가리키지 않는 토큰이 5건 집계에 섞여 있음 — GT 사전(`gt_schoolnames.csv`)
   자체에 이런 값이 정식명으로 들어있는 것으로 보이는 데이터 품질 이슈로, 아직 정리 안 됨
+
+## 3. 피드백
+
+![피드백](./img/feedback.png)
